@@ -8,6 +8,7 @@ server.register_introspection_functions()
 
 
 def add_xmpp_user(username):
+    username = username.split("@")[0]
     user_data_file_path = "/var/lib/prosody/" + os.environ[
         'XMPP_DOMAIN_NAME'] + "%2elocal/accounts/" + username + ".dat"
     admin_roster_file_path = "/var/lib/prosody/" + os.environ['XMPP_DOMAIN_NAME'] + "%2elocal/roster/" + os.environ[
@@ -55,6 +56,7 @@ def turn_on():
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(2, GPIO.OUT)
     GPIO.output(2, True)
+    open(".sysmgr.cfg", 'w').write(str(1))
     return True
 
 
@@ -63,9 +65,26 @@ def turn_off():
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(2, GPIO.OUT)
     GPIO.output(2, False)
+    open(".sysmgr.cfg", 'w').write(str(0))
     return True
 
 
+def get_power_status():
+    import RPi.GPIO as GPIO
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(2, GPIO.OUT)
+    return GPIO.input(2)
+
+
+def start():
+    state = int(open(".sysmgr.cfg").read())
+    import RPi.GPIO as GPIO
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(2, GPIO.OUT)
+    GPIO.output(2, state)
+
+
+start()
 server.register_function(add_xmpp_user)
 server.register_function(turn_on)
 server.register_function(turn_off)
