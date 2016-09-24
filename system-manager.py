@@ -73,18 +73,18 @@ def get_power_status():
     import RPi.GPIO as GPIO
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(2, GPIO.OUT)
-    return GPIO.input(2)
+    return int(GPIO.input(2))
 
 
 def start():
+    import RPi.GPIO as GPIO
     try:
         state = int(open(".sysmgr.cfg").read())
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(2, GPIO.OUT)
+        GPIO.output(2, state)
     except IOError:
         pass
-    import RPi.GPIO as GPIO
-    GPIO.setmode(GPIO.BCM)
-    GPIO.setup(2, GPIO.OUT)
-    GPIO.output(2, state)
 
 
 start()
