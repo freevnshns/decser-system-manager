@@ -32,7 +32,7 @@ def add_xmpp_user(username):
             data = admin_roster_file.readlines()
             data = data[:-1]
             data.append("\t[\"" + username + "@" + os.environ[
-                'XMPP_DOMAIN_NAME'] + ".local\"] = {\n\t\t[\"subscription\"] = \"to\";\n\t\t[\"groups\"] = {};\n\t};\n};")
+                'XMPP_DOMAIN_NAME'] + ".local\"] = {\n\t\t[\"subscription\"] = \"both\";\n\t\t[\"groups\"] = {};\n\t};\n};")
             admin_roster_file.seek(0)
             admin_roster_file.writelines(data)
             admin_roster_file.truncate()
@@ -41,7 +41,7 @@ def add_xmpp_user(username):
             data = user_roster_file.readlines()
             data = data[:-1]
             data.append("\t[\"" + os.environ['XMPP_HOST'] + "@" + os.environ[
-                'XMPP_DOMAIN_NAME'] + ".local\"] = {\n\t\t[\"subscription\"] = \"from\";\n\t\t[\"groups\"] = {};\n\t};\n};")
+                'XMPP_DOMAIN_NAME'] + ".local\"] = {\n\t\t[\"subscription\"] = \"both\";\n\t\t[\"groups\"] = {};\n\t};\n};")
             user_roster_file.seek(0)
             user_roster_file.writelines(data)
             user_roster_file.truncate()
@@ -89,10 +89,34 @@ def start():
         pass
 
 
+def update_system(url):
+    try:
+        filename = url.split('/')[-1]
+        import requests
+        r = requests.get(url, stream=True)
+        with open(filename, 'wb') as f:
+            for chunk in r.iter_content(chunk_size=1024):
+                if chunk:
+                    f.write(chunk)
+        import subprocess
+        subprocess.call(["make", "-C", "/update/"], shell=True)
+        return True
+    except Exception as e:
+        print(e)
+        log(e)
+        return False
+
+
+def log(e):
+    with open("/system-manager/log.txt", 'w') as f:
+        f.write(e)
+
+
 start()
 server.register_function(add_xmpp_user)
 server.register_function(get_power_status)
 server.register_function(turn_on)
 server.register_function(turn_off)
 server.register_function(add_cloud_user)
+server.register_function(update_system)
 server.serve_forever()
