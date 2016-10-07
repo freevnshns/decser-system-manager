@@ -8,45 +8,49 @@ server.register_introspection_functions()
 
 
 def add_xmpp_user(username):
-    username = username.split("@")[0]
-    user_data_file_path = "/var/lib/prosody/" + os.environ[
-        'XMPP_DOMAIN_NAME'] + "%2elocal/accounts/" + username + ".dat"
-    admin_roster_file_path = "/var/lib/prosody/" + os.environ['XMPP_DOMAIN_NAME'] + "%2elocal/roster/" + os.environ[
-        'XMPP_HOST'] + ".dat"
-    user_roster_file_path = "/var/lib/prosody/" + os.environ[
-        'XMPP_DOMAIN_NAME'] + "%2elocal/roster/" + username + ".dat"
-    roster_dir = "/var/lib/prosody/" + os.environ['XMPP_DOMAIN_NAME'] + "%2elocal/roster"
+    try:
+        username = username.split("@")[0]
+        user_data_file_path = "/var/lib/prosody/" + os.environ[
+            'XMPP_DOMAIN_NAME'] + "%2elocal/accounts/" + username + ".dat"
+        admin_roster_file_path = "/var/lib/prosody/" + os.environ['XMPP_DOMAIN_NAME'] + "%2elocal/roster/" + os.environ[
+            'XMPP_HOST'] + ".dat"
+        user_roster_file_path = "/var/lib/prosody/" + os.environ[
+            'XMPP_DOMAIN_NAME'] + "%2elocal/roster/" + username + ".dat"
+        roster_dir = "/var/lib/prosody/" + os.environ['XMPP_DOMAIN_NAME'] + "%2elocal/roster"
 
-    if os.path.exists(user_data_file_path):
+        if os.path.exists(user_data_file_path):
+            return False
+        else:
+            open(user_data_file_path, 'w').write("return {\n\t[\"password\"] = \"abcd\";\n};")
+            if not os.path.exists(roster_dir):
+                os.makedirs(roster_dir, exist_ok=True)
+            new_roster_content = "return {\n\t[false] = {\n\t\t[\"version\"] = 3;\n\t};\n};"
+            if not os.path.exists(admin_roster_file_path):
+                open(admin_roster_file_path, 'w').write(new_roster_content)
+            open(user_roster_file_path, 'w').write(new_roster_content)
+
+            with open(admin_roster_file_path, 'r+') as admin_roster_file:
+                data = admin_roster_file.readlines()
+                data = data[:-1]
+                data.append("\t[\"" + username + "@" + os.environ[
+                    'XMPP_DOMAIN_NAME'] + ".local\"] = {\n\t\t[\"subscription\"] = \"both\";\n\t\t[\"groups\"] = {};\n\t};\n};")
+                admin_roster_file.seek(0)
+                admin_roster_file.writelines(data)
+                admin_roster_file.truncate()
+
+            with open(user_roster_file_path, 'r+') as user_roster_file:
+                data = user_roster_file.readlines()
+                data = data[:-1]
+                data.append("\t[\"" + os.environ['XMPP_HOST'] + "@" + os.environ[
+                    'XMPP_DOMAIN_NAME'] + ".local\"] = {\n\t\t[\"subscription\"] = \"both\";\n\t\t[\"groups\"] = {};\n\t};\n};")
+                user_roster_file.seek(0)
+                user_roster_file.writelines(data)
+                user_roster_file.truncate()
+
+            return True
+    except Exception as e:
+        log(e)
         return False
-    else:
-        open(user_data_file_path, 'w').write("return {\n\t[\"password\"] = \"abcd\";\n};")
-        if not os.path.exists(roster_dir):
-            os.makedirs(roster_dir, exist_ok=True)
-        new_roster_content = "return {\n\t[false] = {\n\t\t[\"version\"] = 3;\n\t};\n};"
-        if not os.path.exists(admin_roster_file_path):
-            open(admin_roster_file_path, 'w').write(new_roster_content)
-        open(user_roster_file_path, 'w').write(new_roster_content)
-
-        with open(admin_roster_file_path, 'r+') as admin_roster_file:
-            data = admin_roster_file.readlines()
-            data = data[:-1]
-            data.append("\t[\"" + username + "@" + os.environ[
-                'XMPP_DOMAIN_NAME'] + ".local\"] = {\n\t\t[\"subscription\"] = \"both\";\n\t\t[\"groups\"] = {};\n\t};\n};")
-            admin_roster_file.seek(0)
-            admin_roster_file.writelines(data)
-            admin_roster_file.truncate()
-
-        with open(user_roster_file_path, 'r+') as user_roster_file:
-            data = user_roster_file.readlines()
-            data = data[:-1]
-            data.append("\t[\"" + os.environ['XMPP_HOST'] + "@" + os.environ[
-                'XMPP_DOMAIN_NAME'] + ".local\"] = {\n\t\t[\"subscription\"] = \"both\";\n\t\t[\"groups\"] = {};\n\t};\n};")
-            user_roster_file.seek(0)
-            user_roster_file.writelines(data)
-            user_roster_file.truncate()
-
-        return True
 
 
 def add_cloud_user():
@@ -91,15 +95,8 @@ def start():
 
 def update_system(url):
     try:
-        filename = url.split('/')[-1]
-        import requests
-        r = requests.get(url, stream=True)
-        with open(filename, 'wb') as f:
-            for chunk in r.iter_content(chunk_size=1024):
-                if chunk:
-                    f.write(chunk)
         import subprocess
-        subprocess.call(["make", "-C", "/update/"], shell=True)
+        subprocess.call(["make", "-C", "/update/", "URL=" + url], shell=True)
         return True
     except Exception as e:
         print(e)
@@ -108,7 +105,7 @@ def update_system(url):
 
 
 def log(e):
-    with open("/system-manager/log.txt", 'w') as f:
+    with open("/system-manager/log.txt", 'r+') as f:
         f.write(e)
 
 
