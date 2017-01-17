@@ -96,7 +96,7 @@ def start():
 def update_system(url):
     try:
         import subprocess
-        subprocess.call(["make", "-C", "/update/", "URL=" + url], shell=True)
+        subprocess.call(["/bin/bash", "/updater/updater.sh", url], shell=True)
         return True
     except Exception as e:
         print(e)
